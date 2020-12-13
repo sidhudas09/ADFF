@@ -2,7 +2,7 @@
 	"name": "MoviesADLS",
 	"properties": {
 		"linkedServiceName": {
-			"referenceName": "ADLS",
+			"referenceName": "AzureBlobStorage1",
 			"type": "LinkedServiceReference"
 		},
 		"folder": {
@@ -12,9 +12,9 @@
 		"type": "DelimitedText",
 		"typeProperties": {
 			"location": {
-				"type": "AzureBlobFSLocation",
-				"folderPath": "ready-demo",
-				"fileSystem": "sample-data"
+				"type": "AzureBlobStorageLocation",
+				"fileName": "moviesDB.csv",
+				"container": "datafiles"
 			},
 			"columnDelimiter": ",",
 			"escapeChar": "\\",
