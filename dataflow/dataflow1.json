@@ -1,0 +1,47 @@
+{
+	"name": "dataflow1",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "MoviesADLS",
+						"type": "DatasetReference"
+					},
+					"name": "MovieList"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "adls",
+						"type": "DatasetReference"
+					},
+					"name": "sink1"
+				}
+			],
+			"transformations": [
+				{
+					"name": "SelectColumns"
+				},
+				{
+					"name": "Moviesafter1950"
+				},
+				{
+					"name": "DerivedGenre"
+				},
+				{
+					"name": "RankMovies"
+				},
+				{
+					"name": "AggregateMovieRating"
+				},
+				{
+					"name": "AlterRow1"
+				}
+			],
+			"script": "source(output(\n\t\tmovie as string,\n\t\ttitle as string,\n\t\tgenres as string,\n\t\tyear as string,\n\t\tRating as string,\n\t\t{Rotton Tomato} as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false) ~> MovieList\nMovieList select(mapColumn(\n\t\tmovie,\n\t\ttitle,\n\t\tgenres,\n\t\tyear,\n\t\t{Rotton Tomato}\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> SelectColumns\nSelectColumns filter(toInteger(year)>1950) ~> Moviesafter1950\nMoviesafter1950 derive(PrimaryGenre = iif(locate('|', genres) > 1, left(genres, locate('|', genres) - 1), genres)) ~> DerivedGenre\nDerivedGenre window(over(PrimaryGenre,\n\t\tyear),\n\tdesc({Rotton Tomato}, true),\n\tRatingsRank = rank()) ~> RankMovies\nRankMovies aggregate(groupBy(PrimaryGenre,\n\t\tyear),\n\tAverageRating = avg(toInteger({Rotton Tomato})),\n\t\tHighestRated = first(title),\n\t\tLowestRated = last(title),\n\t\tNumberofMovies = count()) ~> AggregateMovieRating\nAggregateMovieRating alterRow(upsertIf(true())) ~> AlterRow1\nAlterRow1 sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> sink1"
+		}
+	}
+}
