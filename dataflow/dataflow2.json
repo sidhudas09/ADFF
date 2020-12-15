@@ -1,0 +1,44 @@
+{
+	"name": "dataflow2",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "MoviesADLS",
+						"type": "DatasetReference"
+					},
+					"name": "MoviesList"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "MoviesADLS",
+						"type": "DatasetReference"
+					},
+					"name": "blob"
+				}
+			],
+			"transformations": [
+				{
+					"name": "SelectMovieColumns"
+				},
+				{
+					"name": "FilterMovies"
+				},
+				{
+					"name": "DerivedGenreColumn"
+				},
+				{
+					"name": "RankMoviesByRating"
+				},
+				{
+					"name": "AggregateRatings"
+				}
+			],
+			"script": "source(output(\n\t\tmovie as string,\n\t\ttitle as string,\n\t\tgenres as string,\n\t\tyear as string,\n\t\tRating as string,\n\t\t{Rotton Tomato} as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false) ~> MoviesList\nMoviesList select(mapColumn(\n\t\tmovie,\n\t\ttitle,\n\t\tgenres,\n\t\tyear,\n\t\t{Rotton Tomato}\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> SelectMovieColumns\nSelectMovieColumns filter(toInteger(year)>1950) ~> FilterMovies\nFilterMovies derive(PrimaryGenre = iif(locate('|', genres) > 1, left(genres, locate('|', genres) - 1), genres)) ~> DerivedGenreColumn\nDerivedGenreColumn window(over(PrimaryGenre,\n\t\tyear),\n\tdesc({Rotton Tomato}, true),\n\tRatingsRank = rank()) ~> RankMoviesByRating\nRankMoviesByRating aggregate(groupBy(PrimaryGenre,\n\t\tyear),\n\tAverageRating = avg(toInteger({Rotton Tomato})),\n\t\tHighestRated = first(title),\n\t\tLowestRated = last(title),\n\t\tNumberOfMovies = count()) ~> AggregateRatings\nAggregateRatings sink(input(\n\t\tmovie as string,\n\t\ttitle as string,\n\t\tgenres as string,\n\t\tyear as string,\n\t\tRating as string,\n\t\t{Rotton Tomato} as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: true,\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> blob"
+		}
+	}
+}
